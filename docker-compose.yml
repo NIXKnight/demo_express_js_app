@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Development Service
+  # ============================================
+  app-dev:
+    build:
+      context: .
+      target: development
+      dockerfile: Dockerfile
+    container_name: demo-express-dev
+    image: demo-express-js-app:dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - LOG_LEVEL=debug
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - CORS_ORIGIN=*
+    volumes:
+      # Mount source code for hot-reload
+      - ./:/app
+      # Exclude node_modules from volume mount
+      - /app/node_modules
+      # Mount logs directory
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  # ============================================
+  # Production Service
+  # ============================================
+  app-prod:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile
+    container_name: demo-express-prod
+    image: demo-express-js-app:prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - CORS_ORIGIN=https://yourdomain.com
+    volumes:
+      # Mount only logs directory in production
+      - ./logs:/app/logs
+    restart: always
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 2G
+        reservations:
+          cpus: '2'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
+
+networks:
+  app-network:
+    driver: bridge
