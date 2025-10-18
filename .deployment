@@ -1,0 +1,2 @@
+[config]
+command = bash -c "npm install --production && npm prune --production"
